@@ -155,9 +155,7 @@ static relative_pen_t rel_pen_data = {
 
 static int q11k_probe(struct hid_device *hdev, const struct hid_device_id *id);
 
-static int q11k_prepare_pens(struct hid_device *hdev);
 static int q11k_register_pen(struct hid_device *hdev);
-static int q11k_register_relative_pen(struct hid_device *hdev);
 static int q11k_register_keyboard(struct hid_device *hdev, struct usb_device *usb_dev);
 
 static int q11k_raw_event(struct hid_device *hdev, struct hid_report *report, u8 *data, int size);
@@ -202,7 +200,9 @@ static int q11k_probe(struct hid_device *hdev, const struct hid_device_id *id)
     int if_number = intf->cur_altsetting->desc.bInterfaceNumber;
 
     hdev->quirks |= HID_QUIRK_MULTI_INPUT;
-	hdev->quirks |= HID_QUIRK_NO_EMPTY_INPUT;
+#ifdef HID_QUIRK_NO_EMPTY_INPUT
+    hdev->quirks |= HID_QUIRK_NO_EMPTY_INPUT;
+#endif	// HID_QUIRK_NO_EMPTY_INPUT
 
     if (id->product == USB_DEVICE_ID_HUION_TABLET) {
         DPRINT("q11k device detected if=%d", if_number);
@@ -239,8 +239,9 @@ static int q11k_probe(struct hid_device *hdev, const struct hid_device_id *id)
             rc = q11k_register_keyboard(hdev, usb_dev);
         }
 
-        if (rc == 0)
+        if (rc != 0)
         {
+            DPRINT("q11k failed to register: %d", rc);
             return rc;
         }
 
@@ -262,6 +263,7 @@ static int q11k_register_pen(struct hid_device *hdev)
     idev_pen = input_allocate_device();
     if (idev_pen == NULL)
     {
+        DPRINT("failed to allocate input device for pen");
         hid_err(hdev, "failed to allocate input device for pen\n");
         return -ENOMEM;
     }
@@ -277,7 +279,7 @@ static int q11k_register_pen(struct hid_device *hdev)
     set_bit(EV_REP, idev_pen->evbit);
 
     input_set_capability(idev_pen, EV_ABS, ABS_X);
-	input_set_capability(idev_pen, EV_ABS, ABS_Y);
+    input_set_capability(idev_pen, EV_ABS, ABS_Y);
     input_set_capability(idev_pen, EV_ABS, ABS_PRESSURE);
     input_set_capability(idev_pen, EV_KEY, BTN_TOOL_PEN);
     input_set_capability(idev_pen, EV_KEY, BTN_STYLUS);
@@ -290,6 +292,7 @@ static int q11k_register_pen(struct hid_device *hdev)
     rc = input_register_device(idev_pen);
     if (rc)
     {
+        DPRINT("error registering the input device for pen");
         hid_err(hdev, "error registering the input device for pen\n");
         input_free_device(idev_pen);
         return rc;
