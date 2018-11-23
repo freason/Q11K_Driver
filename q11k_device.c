@@ -331,6 +331,8 @@ static int q11k_register_keyboard(struct hid_device *hdev, struct usb_device *us
 
     input_set_capability(idev_keyboard, EV_MSC, MSC_SCAN);
 
+    input_set_capability(idev_keyboard, EV_REL, REL_WHEEL);
+
     for (i=0; i<Q11k_KeyMapSize; i++)
     {
         input_set_capability(idev_keyboard, EV_KEY, def_keymap[i]);
@@ -650,10 +652,29 @@ static unsigned short q11k_mapping_gesture_keys(u8 b_key_raw, unsigned short** l
 static void q11k_report_keys(const int keyc, const unsigned short* keys, int s)
 {
     int i = 0;
-    for (i = 0; i < keyc; ++i)
+    unsigned short rkey = *(keys + keyc - 1);
+
+    if (rkey == Q11K_VKEY_2_UP || rkey == Q11K_VKEY_2_DOWN)
     {
-        input_report_key(idev_keyboard, keys[i], s);
+        if (s)
+        {
+            int d = 1;
+            if (rkey == Q11K_VKEY_2_DOWN)
+            {
+                d = -1;
+            }
+
+            input_report_rel(idev_keyboard, REL_WHEEL, d);
+        }
     }
+    else
+    {
+        for (i = 0; i < keyc; ++i)
+        {
+            input_report_key(idev_keyboard, keys[i], s);
+        }
+    }
+
     input_sync(idev_keyboard);
 }
 
